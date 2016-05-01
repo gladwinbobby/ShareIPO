@@ -68,7 +68,7 @@ public class UnShareFileActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setItemAnimator(new DefaultItemAnimator());
 
-        if (getIntent().getExtras().containsKey("user")) {
+        if (getIntent().hasExtra("user")) {
             isUserFile = true;
             user = getIntent().getStringExtra("user");
         }
