@@ -36,14 +36,14 @@ public class DatabaseHandler extends SQLiteOpenHelper {
 
     private void createShareDB(SQLiteDatabase db) {
         String createTable = "CREATE TABLE " + Config.TABLE_SHARE + "("
-                + Config.KEY_ID + " INTEGER PRIMARY KEY, " + Config.KEY_USER + " TEXT,"
+                + Config.KEY_ID + " INTEGER PRIMARY KEY, " + Config.KEY_USER + " TEXT, "
                 + Config.KEY_MAC_ID + " TEXT, " + Config.KEY_FILE + " TEXT" + ")";
         db.execSQL(createTable);
     }
 
     private void createSharedDB(SQLiteDatabase db) {
-        String createTable = "CREATE TABLE " + Config.TABLE_SHARE + "("
-                + Config.KEY_ID + " INTEGER PRIMARY KEY, " + Config.KEY_USER + " TEXT,"
+        String createTable = "CREATE TABLE " + Config.TABLE_SHARED + "("
+                + Config.KEY_ID + " INTEGER PRIMARY KEY, " + Config.KEY_USER + " TEXT, "
                 + Config.KEY_MAC_ID + " TEXT, " + Config.KEY_FILE + " TEXT" + ")";
         db.execSQL(createTable);
     }
