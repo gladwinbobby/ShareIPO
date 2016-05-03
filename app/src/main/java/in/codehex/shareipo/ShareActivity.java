@@ -2,6 +2,7 @@ package in.codehex.shareipo;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
@@ -14,9 +15,12 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,9 +59,9 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
                 break;
             case R.id.share:
                 for (int i = 0; i < deviceItemList.size(); i++)
-                    if (deviceItemList.get(i).isSelected())
-                        Toast.makeText(ShareActivity.this,
-                                deviceItemList.get(i).getDeviceIp(), Toast.LENGTH_SHORT).show();
+                    if (deviceItemList.get(i).isSelected()) {
+
+                    }
                 // TODO: send the shared file detail to the selected users and go back to main activity clearing the activity stack
                 break;
         }
@@ -124,12 +128,57 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
                 deviceItemList.clear();
                 adapter.notifyDataSetChanged();
                 for (int i = 0; i < clients.size(); i++) {
-                    deviceItemList.add(i, new DeviceItem(clients.get(i).getDevice(),
-                            clients.get(i).getHWAddr(), clients.get(i).getIpAddr(), false));
-                    adapter.notifyItemInserted(i);
+                    final int ip = i;
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            try {
+                                Socket socket = new Socket(clients.get(ip).getIpAddr(), 8080);
+                                DataOutputStream dos = new DataOutputStream(socket
+                                        .getOutputStream());
+                                dos.writeUTF("profile");
+                                DataInputStream dis = new DataInputStream(socket
+                                        .getInputStream());
+                                String name = dis.readUTF();
+                                int dp = Integer.parseInt(dis.readUTF());
+                                deviceItemList.add(ip, new DeviceItem(clients.get(ip).getDevice(),
+                                        clients.get(ip).getHWAddr(), clients.get(ip).getIpAddr(),
+                                        name, dp, false));
+                                socket.close();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }.start();
+                    adapter.notifyDataSetChanged();
                 }
             }
         });
+    }
+
+    /**
+     * Get the drawable resource from the resource id
+     *
+     * @param resId the resource id of the drawable
+     * @return drawable id
+     */
+    private int getDrawableResource(int resId) {
+        switch (resId) {
+            case R.id.male1:
+                return R.drawable.male1;
+            case R.id.male2:
+                return R.drawable.male2;
+            case R.id.male3:
+                return R.drawable.male3;
+            case R.id.female1:
+                return R.drawable.female1;
+            case R.id.female2:
+                return R.drawable.female2;
+            case R.id.female3:
+                return R.drawable.female3;
+            default:
+                return R.drawable.male1;
+        }
     }
 
     private class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder> {
@@ -150,19 +199,22 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
         }
 
         @Override
-        public void onBindViewHolder(DeviceViewHolder holder, int position) {
+        public void onBindViewHolder(final DeviceViewHolder holder, int position) {
             final DeviceItem deviceItem = deviceItemList.get(position);
 
-            holder.name.setText(deviceItem.getDeviceName());
+            holder.name.setText(deviceItem.getUserName());
             holder.mac.setText(deviceItem.getDeviceAddress());
             holder.ip.setText(deviceItem.getDeviceIp());
+            holder.dp.setImageDrawable(ContextCompat.getDrawable(context,
+                    getDrawableResource(deviceItem.getImgId())));
+            holder.select.setChecked(deviceItem.isSelected());
             holder.select.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 @Override
                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                    if (isChecked)
+                    if (isChecked) {
                         deviceItem.setSelected(true);
-                    else deviceItem.setSelected(false);
-                    adapter.notifyDataSetChanged();
+                    } else deviceItem.setSelected(false);
+                    holder.select.setChecked(deviceItem.isSelected());
                 }
             });
         }
@@ -175,6 +227,7 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
         protected class DeviceViewHolder extends RecyclerView.ViewHolder {
 
             private TextView name, mac, ip;
+            private ImageView dp;
             private CheckBox select;
 
             public DeviceViewHolder(View view) {
@@ -182,6 +235,7 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
                 name = (TextView) view.findViewById(R.id.name);
                 mac = (TextView) view.findViewById(R.id.mac);
                 ip = (TextView) view.findViewById(R.id.ip);
+                dp = (ImageView) view.findViewById(R.id.dp);
                 select = (CheckBox) view.findViewById(R.id.select);
             }
         }

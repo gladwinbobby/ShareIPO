@@ -17,7 +17,7 @@ import in.codehex.shareipo.app.Config;
 
 public class ProfileActivity extends AppCompatActivity implements View.OnClickListener {
 
-    static Integer imgId = 0;
+    int imgId = 0;
     Toolbar toolbar;
     EditText editName;
     ImageButton btnMale1, btnMale2, btnMale3, btnFemale1, btnFemale2, btnFemale3;
@@ -90,10 +90,11 @@ public class ProfileActivity extends AppCompatActivity implements View.OnClickLi
      */
     private void prepareObjects() {
         setSupportActionBar(toolbar);
-        if (getSupportActionBar() != null)
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         if (userPreferences.contains("name")) {
+            if (getSupportActionBar() != null)
+                getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+
             imgId = userPreferences.getInt("img_id", 0);
             setBackgroundColor(imgId);
 
