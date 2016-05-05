@@ -13,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -86,9 +87,9 @@ public class SharedFilesActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(FileViewHolder holder, int position) {
             final FileItem fileItem = fileItemList.get(position);
-
             holder.name.setText(fileItem.getUser());
-            holder.file.setText(fileItem.getFile());
+            File file = new File(fileItem.getFile());
+            holder.file.setText(file.getName());
             holder.setClickListener(new ItemClickListener() {
                 @Override
                 public void onClick(View view, int position, boolean isLongClick) {

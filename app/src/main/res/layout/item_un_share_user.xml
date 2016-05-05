@@ -12,7 +12,7 @@
     card_view:cardElevation="@dimen/card_elevation">
 
     <TextView
-        android:id="@+id/user"
+        android:id="@+id/name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/lite"

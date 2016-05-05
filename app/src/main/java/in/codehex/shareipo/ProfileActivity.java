@@ -98,7 +98,7 @@ public class ProfileActivity extends AppCompatActivity implements View.OnClickLi
             imgId = userPreferences.getInt("img_id", 0);
             setBackgroundColor(imgId);
 
-            String name = userPreferences.getString("name", "bobby");
+            String name = userPreferences.getString("name", null);
             editName.setText(name);
         }
 
