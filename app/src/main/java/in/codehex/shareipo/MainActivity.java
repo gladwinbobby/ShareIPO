@@ -2,9 +2,12 @@ package in.codehex.shareipo;
 
 import android.app.Activity;
 import android.content.ClipData;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
@@ -18,7 +21,10 @@ import com.nononsenseapps.filepicker.FilePickerActivity;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -38,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<String> fileList;
     List<FileItem> sharedItemList;
     DatabaseHandler databaseHandler;
+    WifiManager wifiManager;
+    WifiInfo info;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,6 +112,8 @@ public class MainActivity extends AppCompatActivity {
         databaseHandler = new DatabaseHandler(this);
         fileList = new ArrayList<>();
         sharedItemList = new ArrayList<>();
+        wifiManager = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
+        info = wifiManager.getConnectionInfo();
     }
 
     /**
@@ -153,6 +163,7 @@ public class MainActivity extends AppCompatActivity {
     private void startServer() {
         new Thread(new Profile()).start();
         new Thread(new SharedFiles()).start();
+        new Thread(new TransferFiles()).start();
     }
 
     /**
@@ -199,6 +210,37 @@ public class MainActivity extends AppCompatActivity {
                     for (int i = 0; i < items.size(); i++)
                         sharedItemList.add(new FileItem(name, mac, items.get(i)));
                     databaseHandler.addSharedFiles(sharedItemList);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * A background thread to transfer files from server to client.
+     */
+    private class TransferFiles extends Thread {
+
+        @Override
+        public void run() {
+            try {
+                ServerSocket socket = new ServerSocket(8082);
+                while (true) {
+                    Socket clientSocket = socket.accept();
+                    DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
+                    String path = dis.readUTF();
+                    DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
+                    File file = new File(path);
+                    int size = (int) (file.length());
+                    dos.writeInt(size);
+                    FileInputStream fileInputStream = new FileInputStream(file);
+                    OutputStream outputStream = clientSocket.getOutputStream();
+                    int read;
+                    byte[] buffer = new byte[1024];
+                    while ((read = fileInputStream.read(buffer, 0, 1024)) > 0) {
+                        outputStream.write(buffer, 0, read);
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();

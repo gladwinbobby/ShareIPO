@@ -1,6 +1,7 @@
 package in.codehex.shareipo;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -50,6 +51,7 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
     WifiApManager wifiApManager;
     WifiManager wifiManager;
     WifiInfo info;
+    Intent intent;
     SharedPreferences userPreferences;
 
     @Override
@@ -152,7 +154,8 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
                     dos.writeUTF(files);
                     socket.close();
                     for (int i = 0; i < fileList.size(); i++)
-                        shareItemList.add(new FileItem(name, mac, fileList.get(i)));
+                        shareItemList.add(new FileItem(deviceItemList.get(pos).getUserName(),
+                                deviceItemList.get(pos).getDeviceAddress(), fileList.get(i)));
                     databaseHandler.addShareFiles(shareItemList);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -165,7 +168,6 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
      * Scan for the client devices connected in the network
      */
     private void scan() {
-        //TODO: get device name and pic during the scan
         wifiApManager.getClientList(true, new FinishScanListener() {
 
             @Override
