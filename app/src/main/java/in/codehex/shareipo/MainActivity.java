@@ -1,5 +1,7 @@
 package in.codehex.shareipo;
 
+import com.nononsenseapps.filepicker.FilePickerActivity;
+
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.Context;
@@ -16,8 +18,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-
-import com.nononsenseapps.filepicker.FilePickerActivity;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -177,13 +177,13 @@ public class MainActivity extends AppCompatActivity {
                 ServerSocket socket = new ServerSocket(8080);
                 while (true) {
                     Socket clientSocket = socket.accept();
-                    DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
-                    String msg = dis.readUTF();
-                    if (msg.equals("profile")) {
-                        DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
-                        dos.writeUTF(userPreferences.getString("name", null));
-                        dos.writeUTF(String.valueOf(userPreferences.getInt("img_id", 0)));
-                    }
+                    DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
+                    dos.writeUTF(userPreferences.getString("name", null));
+                    dos.writeUTF(String.valueOf(userPreferences.getInt("img_id", 0)));
+                    dos.writeUTF(info.getMacAddress());
+                    dos.flush();
+                    dos.close();
+                    clientSocket.close();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -210,6 +210,8 @@ public class MainActivity extends AppCompatActivity {
                     for (int i = 0; i < items.size(); i++)
                         sharedItemList.add(new FileItem(name, mac, items.get(i)));
                     databaseHandler.addSharedFiles(sharedItemList);
+                    dis.close();
+                    clientSocket.close();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -241,6 +243,13 @@ public class MainActivity extends AppCompatActivity {
                     while ((read = fileInputStream.read(buffer, 0, 1024)) > 0) {
                         outputStream.write(buffer, 0, read);
                     }
+                    dis.close();
+                    dos.flush();
+                    dos.close();
+                    fileInputStream.close();
+                    outputStream.flush();
+                    outputStream.close();
+                    clientSocket.close();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
