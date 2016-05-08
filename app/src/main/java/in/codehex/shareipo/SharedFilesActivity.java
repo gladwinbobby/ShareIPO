@@ -5,11 +5,11 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Environment;
-import android.support.v4.content.IntentCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
@@ -187,7 +187,7 @@ public class SharedFilesActivity extends AppCompatActivity {
     }
 
     /**
-     * Hide progress bar if it being displayed.
+     * Hide progress bar if it is being displayed.
      */
     private void hideProgressDialog() {
         if (mProgressDialog.isShowing()) {
@@ -198,13 +198,13 @@ public class SharedFilesActivity extends AppCompatActivity {
     /**
      * Hide progress dialog, display success toast and then start main activity
      */
-    private void downloadSuccess() {
+    private void downloadSuccess(File directory) {
         hideProgressDialog();
         Toast.makeText(this, "File download success", Toast.LENGTH_SHORT).show();
-        intent = new Intent(SharedFilesActivity.this, MainActivity.class);
-        intent.addFlags(IntentCompat.FLAG_ACTIVITY_CLEAR_TASK |
-                Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
+        intent = new Intent(Intent.ACTION_GET_CONTENT);
+        Uri uri = Uri.parse(directory.getPath());
+        intent.setDataAndType(uri, "*/*");
+        startActivity(Intent.createChooser(intent, "Open SHAREipo Folder"));
     }
 
     /**
@@ -221,6 +221,7 @@ public class SharedFilesActivity extends AppCompatActivity {
      * @param file     the file to be downloaded
      * @param fileItem an object which contains the file details
      */
+
     private void downloadFile(final File file, final FileItem fileItem) {
         ip = null;
         String fileMac = fileItem.getMacId();
@@ -244,7 +245,7 @@ public class SharedFilesActivity extends AppCompatActivity {
                         dos.writeUTF(path);
                         DataInputStream dis = new DataInputStream(socket.getInputStream());
                         int size = dis.readInt();
-                        File directory = new File(Environment.getExternalStorageDirectory()
+                        final File directory = new File(Environment.getExternalStorageDirectory()
                                 + File.separator + "SHAREipo" + File.separator);
                         File fileData;
                         if (directory.exists() || directory.mkdir())
@@ -279,7 +280,7 @@ public class SharedFilesActivity extends AppCompatActivity {
                         SharedFilesActivity.this.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                downloadSuccess();
+                                downloadSuccess(directory);
                             }
                         });
                     } catch (Exception e) {

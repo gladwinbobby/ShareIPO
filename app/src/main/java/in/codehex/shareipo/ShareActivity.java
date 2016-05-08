@@ -90,7 +90,7 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
                             Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(intent);
                 } else Toast.makeText(ShareActivity.this,
-                        "Files sharing failed", Toast.LENGTH_SHORT).show();
+                        "No file has been selected", Toast.LENGTH_SHORT).show();
                 break;
         }
     }
@@ -203,6 +203,15 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
                         if (i == 254)
                             isLoaded = true;
                     }
+                    if (deviceItemList.isEmpty())
+                        ShareActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(ShareActivity.this,
+                                        "No device is available to share file",
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        });
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
