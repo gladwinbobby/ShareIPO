@@ -8,6 +8,7 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.IntentCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
@@ -23,6 +24,7 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -74,10 +76,21 @@ public class ShareActivity extends AppCompatActivity implements View.OnClickList
                 adapter.notifyDataSetChanged();
                 break;
             case R.id.share:
+                boolean isShared = false;
                 for (int i = 0; i < deviceItemList.size(); i++)
                     if (deviceItemList.get(i).isSelected()) {
                         shareFiles(i);
+                        isShared = true;
                     }
+                if (isShared) {
+                    Toast.makeText(ShareActivity.this,
+                            "Files shared successfully", Toast.LENGTH_SHORT).show();
+                    intent = new Intent(ShareActivity.this, MainActivity.class);
+                    intent.addFlags(IntentCompat.FLAG_ACTIVITY_CLEAR_TASK |
+                            Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } else Toast.makeText(ShareActivity.this,
+                        "Files sharing failed", Toast.LENGTH_SHORT).show();
                 break;
         }
     }

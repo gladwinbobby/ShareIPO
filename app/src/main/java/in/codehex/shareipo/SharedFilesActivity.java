@@ -9,6 +9,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.content.IntentCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
@@ -40,7 +41,8 @@ import in.codehex.shareipo.model.FileItem;
 
 public class SharedFilesActivity extends AppCompatActivity {
 
-    static boolean isLoaded;
+    static String ip;
+    boolean isLoaded;
     Toolbar toolbar;
     RecyclerView recyclerView;
     DatabaseHandler databaseHandler;
@@ -51,7 +53,6 @@ public class SharedFilesActivity extends AppCompatActivity {
     WifiManager wifiManager;
     WifiInfo info;
     Intent intent;
-    String ip;
 
     static int getChunk(InputStream inputStr, ByteArrayOutputStream bytes, byte[] buffer) throws
             IOException {
@@ -195,11 +196,23 @@ public class SharedFilesActivity extends AppCompatActivity {
     }
 
     /**
-     * Hide progress dialog and then display toast
+     * Hide progress dialog, display success toast and then start main activity
      */
     private void downloadSuccess() {
         hideProgressDialog();
-        Toast.makeText(this, "File download success!", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "File download success", Toast.LENGTH_SHORT).show();
+        intent = new Intent(SharedFilesActivity.this, MainActivity.class);
+        intent.addFlags(IntentCompat.FLAG_ACTIVITY_CLEAR_TASK |
+                Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+    }
+
+    /**
+     * Hide progress dialog and then display failure toast
+     */
+    private void downloadFailed() {
+        hideProgressDialog();
+        Toast.makeText(this, "File download failed", Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -209,9 +222,10 @@ public class SharedFilesActivity extends AppCompatActivity {
      * @param fileItem an object which contains the file details
      */
     private void downloadFile(final File file, final FileItem fileItem) {
+        ip = null;
+        String fileMac = fileItem.getMacId();
         for (int i = 0; i < deviceItemList.size(); i++) {
             String mac = deviceItemList.get(i).getMac();
-            String fileMac = fileItem.getMacId();
             if (mac.equals(fileMac)) {
                 ip = deviceItemList.get(i).getIp();
                 break;
@@ -226,6 +240,7 @@ public class SharedFilesActivity extends AppCompatActivity {
                         DataOutputStream dos = new DataOutputStream(socket
                                 .getOutputStream());
                         String path = fileItem.getFile();
+                        dos.writeUTF(info.getMacAddress());
                         dos.writeUTF(path);
                         DataInputStream dis = new DataInputStream(socket.getInputStream());
                         int size = dis.readInt();
@@ -261,15 +276,25 @@ public class SharedFilesActivity extends AppCompatActivity {
                         byteArrayOutputStream.flush();
                         byteArrayOutputStream.close();
                         socket.close();
-                        downloadSuccess();
+                        SharedFilesActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                downloadSuccess();
+                            }
+                        });
                     } catch (Exception e) {
-                        hideProgressDialog();
+                        SharedFilesActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                downloadFailed();
+                            }
+                        });
                         e.printStackTrace();
                     }
                 }
             }.start();
         else Toast.makeText(SharedFilesActivity.this,
-                fileItem.getUser() + " is not connected to the network", Toast.LENGTH_SHORT).show();
+                fileItem.getUser() + " is not available", Toast.LENGTH_SHORT).show();
     }
 
     private class FileAdapter extends RecyclerView.Adapter<FileAdapter.FileViewHolder> {
@@ -298,11 +323,19 @@ public class SharedFilesActivity extends AppCompatActivity {
             holder.setClickListener(new ItemClickListener() {
                 @Override
                 public void onClick(View view, int position, boolean isLongClick) {
+                    String fileMac = fileItem.getMacId();
+                    for (int i = 0; i < deviceItemList.size(); i++) {
+                        String mac = deviceItemList.get(i).getMac();
+                        if (mac.equals(fileMac)) {
+                            isLoaded = true;
+                            break;
+                        }
+                    }
                     if (isLoaded) {
                         showProgressDialog();
                         downloadFile(file, fileItem);
                     } else Toast.makeText(SharedFilesActivity.this,
-                            "Fetching details! Please wait!", Toast.LENGTH_SHORT).show();
+                            "Fetching details.. Please wait..", Toast.LENGTH_SHORT).show();
                 }
             });
         }

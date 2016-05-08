@@ -18,6 +18,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -160,6 +161,9 @@ public class MainActivity extends AppCompatActivity {
         startServer();
     }
 
+    /**
+     * Start all the background server sockets.
+     */
     private void startServer() {
         new Thread(new Profile()).start();
         new Thread(new SharedFiles()).start();
@@ -177,6 +181,13 @@ public class MainActivity extends AppCompatActivity {
                 ServerSocket socket = new ServerSocket(8080);
                 while (true) {
                     Socket clientSocket = socket.accept();
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this,
+                                    "Profile info has been shared", Toast.LENGTH_SHORT).show();
+                        }
+                    });
                     DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
                     dos.writeUTF(userPreferences.getString("name", null));
                     dos.writeUTF(String.valueOf(userPreferences.getInt("img_id", 0)));
@@ -202,6 +213,13 @@ public class MainActivity extends AppCompatActivity {
                 ServerSocket socket = new ServerSocket(8081);
                 while (true) {
                     Socket clientSocket = socket.accept();
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this,
+                                    "A file has been shared with you", Toast.LENGTH_SHORT).show();
+                        }
+                    });
                     DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
                     String name = dis.readUTF();
                     String mac = dis.readUTF();
@@ -230,7 +248,16 @@ public class MainActivity extends AppCompatActivity {
                 ServerSocket socket = new ServerSocket(8082);
                 while (true) {
                     Socket clientSocket = socket.accept();
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this,
+                                    "File is being transferred..", Toast.LENGTH_SHORT).show();
+                        }
+                    });
                     DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
+                    // TODO: verify whether the files is available and then let download
+                    String mac = dis.readUTF();
                     String path = dis.readUTF();
                     DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
                     File file = new File(path);
