@@ -76,14 +76,14 @@ public class DatabaseHandler extends SQLiteOpenHelper {
 
     public List<FileItem> getShareFileList() {
         List<FileItem> fileItemList = new ArrayList<>();
-        String selectQuery = "SELECT * FROM " + Config.TABLE_SHARE;
+        String selectQuery = "SELECT * FROM " + Config.TABLE_SHARE + " GROUP BY " + Config.KEY_FILE;
 
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.rawQuery(selectQuery, null);
         if (cursor.moveToFirst()) {
             do {
-                fileItemList.add(new FileItem(cursor.getString(1), cursor.getString(2),
-                        cursor.getString(3), false));
+                fileItemList.add(new FileItem(cursor.getInt(0), cursor.getString(1),
+                        cursor.getString(2), cursor.getString(3), false));
             } while (cursor.moveToNext());
             cursor.close();
             db.close();
@@ -99,8 +99,8 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         Cursor cursor = db.rawQuery(selectQuery, null);
         if (cursor.moveToFirst()) {
             do {
-                fileItemList.add(new FileItem(cursor.getString(1), cursor.getString(2),
-                        cursor.getString(3), false));
+                fileItemList.add(new FileItem(cursor.getInt(0), cursor.getString(1),
+                        cursor.getString(2), cursor.getString(3), false));
             } while (cursor.moveToNext());
             cursor.close();
             db.close();
@@ -117,8 +117,8 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         Cursor cursor = db.rawQuery(selectQuery, null);
         if (cursor.moveToFirst()) {
             do {
-                fileItemList.add(new FileItem(cursor.getString(1), cursor.getString(2),
-                        cursor.getString(3)));
+                fileItemList.add(new FileItem(cursor.getInt(0), cursor.getString(1),
+                        cursor.getString(2), cursor.getString(3), false));
             } while (cursor.moveToNext());
             cursor.close();
             db.close();
@@ -144,12 +144,21 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         return fileItemList;
     }
 
-    public void removeShareFiles(List<Integer> integerList) {
+    public void removeShareUserFiles(List<Integer> integerList) {
         SQLiteDatabase db = this.getWritableDatabase();
 
         for (int i = 0; i < integerList.size(); i++)
             db.delete(Config.TABLE_SHARE, Config.KEY_ID + " = ?",
                     new String[]{String.valueOf(integerList.get(i))});
+        db.close();
+    }
+
+    public void removeShareFiles(List<String> stringList) {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        for (int i = 0; i < stringList.size(); i++)
+            db.delete(Config.TABLE_SHARE, Config.KEY_FILE + " = ?",
+                    new String[]{stringList.get(i)});
         db.close();
     }
 

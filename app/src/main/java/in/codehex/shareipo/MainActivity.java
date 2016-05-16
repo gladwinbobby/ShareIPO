@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
     Intent intent;
     SharedPreferences userPreferences;
     ArrayList<String> fileList;
-    List<FileItem> sharedItemList;
+    List<FileItem> sharedItemList, mFileItemList;
     DatabaseHandler databaseHandler;
     WifiManager wifiManager;
     WifiInfo info;
@@ -112,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
         userPreferences = getSharedPreferences(Config.PREF_USER, MODE_PRIVATE);
         databaseHandler = new DatabaseHandler(this);
         fileList = new ArrayList<>();
+        mFileItemList = new ArrayList<>();
         sharedItemList = new ArrayList<>();
         wifiManager = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
         info = wifiManager.getConnectionInfo();
@@ -248,34 +249,55 @@ public class MainActivity extends AppCompatActivity {
                 ServerSocket socket = new ServerSocket(8082);
                 while (true) {
                     Socket clientSocket = socket.accept();
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(MainActivity.this,
-                                    "File is being transferred..", Toast.LENGTH_SHORT).show();
-                        }
-                    });
                     DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
-                    // TODO: verify whether the files is available and then let download
                     String mac = dis.readUTF();
                     String path = dis.readUTF();
+                    mFileItemList.clear();
+                    mFileItemList.addAll(databaseHandler.getShareUserFileList(mac));
+                    boolean isAvailable = false;
+                    for (int i = 0; i < mFileItemList.size(); i++) {
+                        if (mFileItemList.get(i).getFile().equals(path)) {
+                            isAvailable = true;
+                            break;
+                        }
+                    }
                     DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
-                    File file = new File(path);
-                    int size = (int) (file.length());
-                    dos.writeInt(size);
-                    FileInputStream fileInputStream = new FileInputStream(file);
-                    OutputStream outputStream = clientSocket.getOutputStream();
-                    int read;
-                    byte[] buffer = new byte[1024];
-                    while ((read = fileInputStream.read(buffer, 0, 1024)) > 0) {
-                        outputStream.write(buffer, 0, read);
+                    if (isAvailable) {
+                        MainActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this,
+                                        "File is being transferred..", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        File file = new File(path);
+                        int size = (int) (file.length());
+                        dos.writeInt(0);
+                        dos.writeInt(size);
+                        FileInputStream fileInputStream = new FileInputStream(file);
+                        OutputStream outputStream = clientSocket.getOutputStream();
+                        int read;
+                        byte[] buffer = new byte[1024];
+                        while ((read = fileInputStream.read(buffer, 0, 1024)) > 0) {
+                            outputStream.write(buffer, 0, read);
+                        }
+                        fileInputStream.close();
+                        outputStream.flush();
+                        outputStream.close();
+                    } else {
+                        dos.writeInt(1);
+                        MainActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this,
+                                        "Someone is trying to access unshared file",
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        });
                     }
                     dis.close();
                     dos.flush();
                     dos.close();
-                    fileInputStream.close();
-                    outputStream.flush();
-                    outputStream.close();
                     clientSocket.close();
                 }
             } catch (IOException e) {

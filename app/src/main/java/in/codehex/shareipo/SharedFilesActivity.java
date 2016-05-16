@@ -4,6 +4,7 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.net.wifi.WifiInfo;
@@ -18,6 +19,7 @@ import android.support.v7.widget.Toolbar;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.MimeTypeMap;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -42,7 +44,7 @@ import in.codehex.shareipo.model.FileItem;
 public class SharedFilesActivity extends AppCompatActivity {
 
     static String ip;
-    boolean isLoaded;
+    boolean isLoaded, isAvailable;
     Toolbar toolbar;
     RecyclerView recyclerView;
     DatabaseHandler databaseHandler;
@@ -98,8 +100,15 @@ public class SharedFilesActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         mProgressDialog.setMessage("Downloading file..");
-        mProgressDialog.setCancelable(false);
         mProgressDialog.setIndeterminate(true);
+        mProgressDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialog) {
+                dialog.dismiss();
+                Toast.makeText(SharedFilesActivity.this,
+                        "Downloading..", Toast.LENGTH_LONG).show();
+            }
+        });
 
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -107,6 +116,10 @@ public class SharedFilesActivity extends AppCompatActivity {
 
         fileItemList.addAll(databaseHandler.getSharedFileList());
         adapter.notifyDataSetChanged();
+
+        if (fileItemList.isEmpty())
+            Toast.makeText(SharedFilesActivity.this,
+                    "No file has been shared with you", Toast.LENGTH_SHORT).show();
 
         scan();
     }
@@ -198,13 +211,15 @@ public class SharedFilesActivity extends AppCompatActivity {
     /**
      * Hide progress dialog, display success toast and then start main activity
      */
-    private void downloadSuccess(File directory) {
+    private void downloadSuccess(File file) {
         hideProgressDialog();
         Toast.makeText(this, "File download success", Toast.LENGTH_SHORT).show();
-        intent = new Intent(Intent.ACTION_GET_CONTENT);
-        Uri uri = Uri.parse(directory.getPath());
-        intent.setDataAndType(uri, "*/*");
-        startActivity(Intent.createChooser(intent, "Open SHAREipo Folder"));
+        intent = new Intent(Intent.ACTION_VIEW);
+        Uri fileUri = Uri.fromFile(file);
+        String fileExtension = MimeTypeMap.getFileExtensionFromUrl(fileUri.toString());
+        String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension);
+        intent.setDataAndType(fileUri, mimeType);
+        startActivity(intent);
     }
 
     /**
@@ -232,7 +247,7 @@ public class SharedFilesActivity extends AppCompatActivity {
                 break;
             }
         }
-        if (ip != null)
+        if (ip != null) {
             new Thread() {
                 @Override
                 public void run() {
@@ -244,45 +259,63 @@ public class SharedFilesActivity extends AppCompatActivity {
                         dos.writeUTF(info.getMacAddress());
                         dos.writeUTF(path);
                         DataInputStream dis = new DataInputStream(socket.getInputStream());
-                        int size = dis.readInt();
-                        final File directory = new File(Environment.getExternalStorageDirectory()
-                                + File.separator + "SHAREipo" + File.separator);
-                        File fileData;
-                        if (directory.exists() || directory.mkdir())
-                            fileData = new File(directory, file.getName());
-                        else fileData = new File(Environment.getExternalStorageDirectory()
-                                + File.separator, file.getName());
-                        FileOutputStream fileOutputStream =
-                                new FileOutputStream(fileData);
-                        InputStream inputStream = socket.getInputStream();
-                        byte[] buffer = new byte[1024];
-                        ByteArrayOutputStream byteArrayOutputStream = new
-                                ByteArrayOutputStream();
-                        while (size >= 1024) {
-                            size -= getChunk(inputStream, byteArrayOutputStream, buffer);
-                            fileOutputStream.write(byteArrayOutputStream.toByteArray());
-                            byteArrayOutputStream.reset();
-                        }
+                        int error = dis.readInt();
+                        if (error == 0) {
+                            int size = dis.readInt();
+                            final File directory = new File(Environment
+                                    .getExternalStorageDirectory()
+                                    + File.separator + "SHAREipo" + File.separator);
+                            final File fileData;
+                            if (directory.exists() || directory.mkdir())
+                                fileData = new File(directory, file.getName());
+                            else fileData = new File(Environment.getExternalStorageDirectory()
+                                    + File.separator, file.getName());
+                            FileOutputStream fileOutputStream =
+                                    new FileOutputStream(fileData);
+                            InputStream inputStream = socket.getInputStream();
+                            byte[] buffer = new byte[1024];
+                            ByteArrayOutputStream byteArrayOutputStream = new
+                                    ByteArrayOutputStream();
+                            while (size >= 1024) {
+                                size -= getChunk(inputStream, byteArrayOutputStream, buffer);
+                                fileOutputStream.write(byteArrayOutputStream.toByteArray());
+                                byteArrayOutputStream.reset();
+                            }
 
-                        int data;
-                        while ((data = inputStream.read()) != -1)
-                            byteArrayOutputStream.write(data);
-                        fileOutputStream.write(byteArrayOutputStream.toByteArray());
+                            int data;
+                            while ((data = inputStream.read()) != -1)
+                                byteArrayOutputStream.write(data);
+                            fileOutputStream.write(byteArrayOutputStream.toByteArray());
+                            SharedFilesActivity.this.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    downloadSuccess(fileData);
+                                }
+                            });
+                            fileOutputStream.flush();
+                            fileOutputStream.close();
+                            inputStream.close();
+                            byteArrayOutputStream.flush();
+                            byteArrayOutputStream.close();
+                        } else if (error == 1) {
+                            SharedFilesActivity.this.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    hideProgressDialog();
+                                    Toast.makeText(SharedFilesActivity.this,
+                                            file.getName() + " is not shared with you anymore",
+                                            Toast.LENGTH_SHORT).show();
+                                    databaseHandler.removeSharedFile(fileItem.getId());
+                                    fileItemList.clear();
+                                    fileItemList.addAll(databaseHandler.getSharedFileList());
+                                    adapter.notifyDataSetChanged();
+                                }
+                            });
+                        }
                         dos.flush();
                         dos.close();
                         dis.close();
-                        fileOutputStream.flush();
-                        fileOutputStream.close();
-                        inputStream.close();
-                        byteArrayOutputStream.flush();
-                        byteArrayOutputStream.close();
                         socket.close();
-                        SharedFilesActivity.this.runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                downloadSuccess(directory);
-                            }
-                        });
                     } catch (Exception e) {
                         SharedFilesActivity.this.runOnUiThread(new Runnable() {
                             @Override
@@ -294,7 +327,7 @@ public class SharedFilesActivity extends AppCompatActivity {
                     }
                 }
             }.start();
-        else Toast.makeText(SharedFilesActivity.this,
+        } else Toast.makeText(SharedFilesActivity.this,
                 fileItem.getUser() + " is not available", Toast.LENGTH_SHORT).show();
     }
 
@@ -328,11 +361,15 @@ public class SharedFilesActivity extends AppCompatActivity {
                     for (int i = 0; i < deviceItemList.size(); i++) {
                         String mac = deviceItemList.get(i).getMac();
                         if (mac.equals(fileMac)) {
-                            isLoaded = true;
+                            isAvailable = true;
                             break;
                         }
                     }
                     if (isLoaded) {
+                        showProgressDialog();
+                        downloadFile(file, fileItem);
+                    } else if (isAvailable) {
+                        isAvailable = false;
                         showProgressDialog();
                         downloadFile(file, fileItem);
                     } else Toast.makeText(SharedFilesActivity.this,
